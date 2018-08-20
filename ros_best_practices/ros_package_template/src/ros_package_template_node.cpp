@@ -20,15 +20,18 @@
  * This tutorial demonstrates simple sending of messages over the ROS system.
  */
 
-void chatterCallback(const amiro_msgs::UInt16MultiArryStamped::ConstPtr& msg)
-{
-  ROS_INFO("I heard: [%s]", msg->data.c_str());
-}
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "listener");
+    ros::init(argc,argv,"talker");
+
     ros::NodeHandle n;
-    ros::Subscriber sub = n.subscribe("/amiro1/proximity_floor/values", 1000, chatterCallback);
+    ros::Publisher chatter_pub = n.advertise<geometry_msgs::Twist>("/amiro1/cmd_vel", 1);
+    geometry_msgs::Twist  msg;
+    msg.linear.x = 0.1;
+    while(ros::ok()){
+
+    chatter_pub.publish(msg);
+ }
 
   return 0;
 }
