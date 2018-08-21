@@ -184,7 +184,7 @@ ros::Publisher pub;
 const size_t numSensors = 4;
 std::random_device rd;
 std::mt19937 gen(rd());
-
+int idTest[2];
 inline double gray2mean(const double gray) {
   const double a = 11010.7641914599;
   const double b = 0.0610333423539444;
@@ -199,6 +199,29 @@ inline double gray2std(const double gray) {
   const double c = 1503.24485506827;
   const double d = -2.08504831316051;
   return a*tanh(b*gray+d)+c;
+}
+
+int classificatePoint(int leftSensorValue,int rightSensorValue) //Berechnet die einzelnen WegPunkt ID's
+{
+    int class_value = -1;
+
+    if(rightSensorValue>90&&rightSensorValue<110){class_value=0;}
+    else if(rightSensorValue>115&&rightSensorValue<135){class_value=1;}
+    else if(rightSensorValue>140&&rightSensorValue<160){class_value=2;}
+    else
+    {
+		return -1;
+	}
+    if(leftSensorValue>115&&leftSensorValue<135){class_value+=3;}
+    else if(leftSensorValue>140&&leftSensorValue<160){class_value+=6;}
+    else if(leftSensorValue>90&&leftSensorValue<110){class_value+=0;}
+	else
+    {
+		return -1;
+	}
+	
+	
+    return class_value;
 }
 
 void callback(const sensor_msgs::Image::ConstPtr msg0,
@@ -219,39 +242,27 @@ void callback(const sensor_msgs::Image::ConstPtr msg0,
     size_t grayIntegrated = 0;
     for(auto it = msgs[idx]->data.begin(); it != msgs[idx]->data.end(); ++it) {
       grayIntegrated += size_t(*it);
-      ROS_INFO("Integrate over all pixel values to get the mean gray value %u",grayIntegrated);
     }
     // Normalize to 0 .. 255
     const double gray = double(grayIntegrated) / msgs[idx]->data.size();
-	ROS_INFO("gray %f",gray);
-	ROS_INFO("grayIntegrated %u",gray);
-	ROS_INFO("msgs[idx]->data.size %u",msgs[idx]->data.size());
 	
-	
-    // Parameterize the normal distribution to sample
-    std::normal_distribution<> distribution(gray2mean(gray),gray2std(gray));
-
-    // Sample the sensor value
-    const double sensorValue = distribution(gen);
-	ROS_INFO(" Sample the sensor value %f",sensorValue);
 	 values.array.data.at(idx) = uint(gray);
-	/*
-    // Truncate the sampled value
-    if (sensorValue < double(std::numeric_limits<unsigned short>::min())) {
-      values.array.data.at(idx) = std::numeric_limits<unsigned short>::min();
-    } else if (sensorValue > double(std::numeric_limits<unsigned short>::max())) {
-      values.array.data.at(idx) = std::numeric_limits<unsigned short>::max();
-    } else {
-      values.array.data.at(idx) = std::round(sensorValue);
-    }
 
-    // Get the most current timestamp for the whole message
-    if (values.header.stamp < msgs[idx]->header.stamp) {
-      values.header.stamp = msgs[idx]->header.stamp;
-    }*/
   }
+  idTest[0]= values.array.data[1];
+  idTest[1]= values.array.data[2];
+  int id=classificatePoint(idTest[0],idTest[1]);
+  if(id!=-1)
+	{
+		ROS_INFO("Point ID: %u",id);
+	}else
+	{
+		ROS_INFO("Point ID: NO POINT");
+	}
   pub.publish(values);
 }
+
+
 
 int main(int argc, char **argv)
 {
@@ -281,6 +292,7 @@ int main(int argc, char **argv)
   sync.registerCallback(boost::bind(&callback, _1, _2, _3, _4));
 
   pub = n.advertise<amiro_msgs::UInt16MultiArrayStamped>(topic_out, 1);
+   
    
 
     //Publisher
